@@ -117,6 +117,7 @@ Using UMPIRE framework (adapted):
 
 **Implement:** 
 -  suggest git checkout -b feat/reader-go-to-page off main.
+-  My current feature branch: https://github.com/LindaMukundwa/stump/tree/feature-814
 
 **Review:**
 1. Reuses setCurrentPage rather than duplicating URL/progress logic 
