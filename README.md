@@ -6,7 +6,7 @@ This is a contribution README that tracks my entire journey from issue selection
 **Contribution Number:** [1]  
 **Student:** [Linda Mukundwa]  
 **Issue:** [GitHub issue link](https://github.com/stumpapp/stump/issues/814)  
-**Status:** [Phase II] [Complete]
+**Status:** [Phase III] [Complete]
 
 ---
 
@@ -117,7 +117,7 @@ Using UMPIRE framework (adapted):
 
 **Implement:** 
 -  suggest git checkout -b feat/reader-go-to-page off main.
--  My current feature branch: https://github.com/LindaMukundwa/stump/tree/feature-814
+-  My current feature branch: [Feature Branch](https://github.com/LindaMukundwa/stump/tree/feat/reader-go-to-page)
 
 **Review:**
 1. Reuses setCurrentPage rather than duplicating URL/progress logic 
