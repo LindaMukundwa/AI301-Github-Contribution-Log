@@ -157,9 +157,29 @@ Note: Still questioning whether the jump control should appear in both Paged and
 
 ## Implementation Notes
 
-### Week [X] Progress
+### Week [1] Progress
 
-[What you built this week, challenges faced, decisions made]
+This week, I worked on creating the component feature itself by creating the file, GoToPage.tsx, which is a pure, prop-driven popover control (currentPage, totalPages, onSubmit). Validation is extracted into an exported clampPage() so the rule is testable without rendering. Debug logs are namespaced. I tested this file with unit tests found under GoToPage.test.tsx that has 10 tests covering clamp-high/low, empty book, non-numeric rejection, click-submit, and Enter-to-submit.
+
+**Some of the test results are:**
+
+yarn jest GoToPage → 10/10 pass
+yarn check-types (browser) → clean, exit 0
+What the tests already caught and fixed (the value of testing first):
+
+An invalid variant="primary" on Button (only default/ghost/outline/secondary/destructive/link exist).
+Two query ambiguities. The submit button "Go" and trigger "Go to page" both matched /go/i; resolved by matching the input via its spinbutton role and the submit button by exact name.
+Adopted the linter's canonical text-gray-450 over the raw hex.
+
+Since there are little errors, I am now working on wiring it into the footer itself. This swaps the static "X of 42" Text at ReaderFooter.tsx:183-190 for <GoToPage>, binding onSubmit to setCurrentPage from context and gating it to ReadingMode.Paged. That's where the [GoToPage] debug logs become observable and you can verify the URL updates to ?page=N in the browser.
+
+Some of the challenges during this level where adhering to the strict code guidelines, using the correct libraries and determining how each component was connected in the application. As of now, there is low risk to the app running since nothing is directly calling on GoToPage.tsx but I am making sure to thoroughly test at each step.
+
+I am also making 2 deliberate design choices that make this reviewer-friendly:
+
+GoToPage is pure and prop-driven (currentPage, totalPages, onSubmit). This is exactly like the existing ImageScalingSelect.tsx (value/onChange). Context gets wired at the call site in Increment 2. This means the validation logic is unit-testable with no context/router mocking, and the component can't accidentally couple to reader internals.
+
+Reuse, don't reinvent. onSubmit will be bound to the existing setCurrentPage (= handleChangePage), which already does state + URL ?page=N + progress write (ImageBasedReader.tsx:109-124). No new navigation code so a reviewer can see the jump goes through the same audited path as every other page change.
 
 ### Week [Y] Progress
 
