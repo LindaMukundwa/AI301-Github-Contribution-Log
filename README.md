@@ -3,10 +3,10 @@ This is a contribution README that tracks my entire journey from issue selection
 
 # Contribution [2]: [[FEATURE] Add a way to go to specific page of book #814]
 
-**Contribution Number:** [1]  
+**Contribution Number:** [4]  
 **Student:** [Linda Mukundwa]  
 **Issue:** [GitHub issue link](https://github.com/stumpapp/stump/issues/814)  
-**Status:** [Phase III] [Complete]
+**Status:** [Phase IV] [Pending Approval]
 
 ---
 
@@ -181,23 +181,111 @@ GoToPage is pure and prop-driven (currentPage, totalPages, onSubmit). This is ex
 
 Reuse, don't reinvent. onSubmit will be bound to the existing setCurrentPage (= handleChangePage), which already does state + URL ?page=N + progress write (ImageBasedReader.tsx:109-124). No new navigation code so a reviewer can see the jump goes through the same audited path as every other page change.
 
-### Week [Y] Progress
+### Week [4-6] Progress
 
 [Continue documenting as you work]
 
 ### Code Changes
 
-- **Files modified:** [List]
-- **Key commits:** [Links to important commits]
-- **Approach decisions:** [Why you chose certain approaches]
+- **Files modified:**
+- * packages/browser/.../container/GoToPage.tsx 
+  * packages/browser/.../container/__tests__/GoToPage.test.tsx
+  * packages/browser/.../container/ReaderFooter.tsx
+  * 
+- **Key commits:** [Important Commits](https://github.com/LindaMukundwa/stump/commit/c3468bdd7cd26059c950ffe01a8c6a153b7052e0)
+- **Approach decisions:**
+- Not overengineering, adequately testing each step and functionality were at the forefront of each decision.
 
 ---
 
 ## Pull Request
 
-**PR Link:** [GitHub PR URL when submitted]
+**PR Link:** [Stump Pull Request](https://github.com/stumpapp/stump/pull/1294)
 
-**PR Description:** [Draft or final PR description - much of the content above can be adapted]
+**PR Description:**
+
+Closes [ISSUE #814 ](https://github.com/stumpapp/stump/issues/814)
+
+## Description
+
+Issue #814 -  feat(reader): go-to-page control, and fix PDFium binding reuse & thread-safety
+
+## Summary
+
+This PR contains two independent changes that came out of getting the reader working end-to-end during local setup:
+1. Feature: a "go to page" control in the image-based reader for quick position recovery.
+2. Demo: https://imgur.com/a/fg4fzLz 
+3. Fix: corrects a PDFium binding bug (every PDF page after the first failed) and a latent thread-safety issue in the PDF renderer.
+
+They're bundled because the PDF fix was a prerequisite to exercising the reader locally. Happy to split into two PRs if preferred and any other changes are requested. I am in a class learning to contribute to open-source projects, while being AI-native and critical of the output; therefore, AI assistance from Claude was used in part for this contribution. This is my first contribution to any open-source project ever, so I appreciate any advice and constructive criticism. Thank you!
+
+## 1. Feature: "Go to page" control
+
+**What & why??**
+
+This was already an open issue. In paged mode, the footer's position indicator (e.g., "4-5 of 42") is now a clickable trigger that opens a small popover with a number input, letting the reader jump directly to any page. This is a manual-recovery affordance: if the reading position is ever lost, the user can type the page they remember and return to it immediately.
+Scope
+* Image-based reader, paged mode only. Continuous-scroll modes keep the plain-text indicator, since their page-change path doesn't sync to the URL the same way; this was deferred intentionally.
+* EPUB reader unaffected (it's location/CFI-based with its own TOC + bookmarks).
+
+**How it works**
+
+* The new GoToPage component is presentation-only: it takes currentPage, totalPages, and an onSubmit callback. It owns no reader state and performs no navigation itself.
+* In ReaderFooter, onSubmit is bound to the existing setCurrentPage handler, so a jump goes through the same state + URL (?page=N) + progress-write path as every other page change. No new navigation logic.
+* Input is validated and clamped to 1..totalPages; non-numeric input is ignored. Submits on click or Enter.
+
+**Files**
+
+* packages/browser/.../container/GoToPage.tsx : new component + exported clampPage helper.
+* packages/browser/.../container/__tests__/GoToPage.test.tsx: unit tests.
+* packages/browser/.../container/ReaderFooter.tsx : wires the control in (paged mode), reusing the existing page-range label.
+
+**Testing**
+
+* 0 unit tests: clamp above/below range, empty book, non-numeric rejection, click-submit, Enter-submit, trigger rendering.
+* yarn check-types + eslint clean on all changed files.
+* Manually verified in browser: paged mode → click indicator → enter page → reader jumps, URL updates to ?page=N, progress persists.
+
+## 2. Fix: PDFium binding reuse + thread-safety
+
+The Problem (three issues, surfaced in order)
+
+1. PdfConfigurationError : pdfium_path was unset and no system PDFium existed. (Resolved locally by installing libpdfium.dylib and pointing config at it, environment/config, no code change.)
+2. PdfiumLibraryBindingsAlreadyInitialized : a real code bug. pdfium-render stores its loaded library in a process-global cell that can only be initialized once, but renderer() called bind_to_library() on every render, so the second page ever viewed failed. pdf_prerender_range = 5 made it fail instantly by rendering several pages concurrently.
+3. Latent thread-safety: PDFium's native library isn't thread-safe, but renders run across multiple spawn_blocking threads.
+
+Fix: core/src/filesystem/media/format/[pdf.rs](http://pdf.rs/)
+
+* Added a process-global PDFIUM_LOCK: Mutex<()> that serializes all PDFium access.
+* Rewrote renderer() to bind once and reuse existing bindings afterward - on PdfiumLibraryBindingsAlreadyInitialized it falls back to Pdfium::default(), which the crate documents as reusing already-initialized bindings. It now returns a MutexGuard held for the whole render.
+* Updated the three call sites (get_page_count, page render, and the file converter) to keep the guard alive via let (_guard, pdfium) = ….
+
+**Testing**
+
+* Verified locally: PDFs now render past the first page, including with pdf_prerender_range = 5 (previously an instant failure); no binding-reinit errors under concurrent prerendering.
+
+Setup note for reviewers/testers
+To exercise PDF rendering you need a PDFium binary and pdfium_path set to it (macOS: libpdfium.dylib). (Possible follow-up: document this in docs/.../installation/source.mdx.)
+
+## Screenshots
+
+https://imgur.com/a/fg4fzLz
+
+## Ready?
+
+Please read each item and check the boxes:
+
+- [☑] I read the [contributing guidelines](https://github.com/stumpapp/stump/blob/main/.github/CONTRIBUTING.md)
+- [☑] I searched for existing issues or pull requests that may be related to my contribution
+- [☑] This PR is based into `nightly` and not `main`
+- [☑] I added tests and/or documentation for my changes if applicable
+
+## Stump Contributor License Agreement
+
+By contributing to Stump, you agree that your contributions will be licensed under the following licenses (where applicable):
+
+- The [expo application](https://github.com/stumpapp/stump/blob/main/apps/expo/LICENSE) is licensed under [GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html)
+- All other code in the repository is licensed under [MIT License](https://www.tldrlegal.com/license/mit-license)
 
 **Maintainer Feedback:**
 - [Date]: [Summary of feedback received]
